@@ -212,7 +212,8 @@
 </div>
 
 <script>
-    let currentMode = 'turbine';
+    // FIX 1: Use 'var' so it attaches to 'window' and Python can see it
+    var currentMode = 'turbine'; 
 
     function setMode(mode) {
         currentMode = mode;
@@ -258,14 +259,15 @@
 
 <py-script>
     from pyXSteam.XSteam import XSteam
-    from js import document, currentMode
+    from js import document
+    import js  # FIX 2: Import the whole js module, don't import variables directly
 
     steamTable = XSteam(XSteam.UNIT_SYSTEM_MKS)
 
     def calculate_system(*args):
         try:
-            # 1. Get Mode (Passed from JS global var)
-            mode = currentMode # 'turbine' or 'compressor'
+            # FIX 3: Access currentMode from the js module directly
+            mode = js.currentMode 
 
             # 2. Get Inputs
             P_in = float(document.getElementById("P_in").value)
@@ -322,7 +324,7 @@
 
         except Exception as e:
             print(f"Error: {e}")
-            document.getElementById("res_power_actual").innerText = "Check Inputs"
+            document.getElementById("res_power_actual").innerText = f"Error: {e}"
 
     document.getElementById("loading").style.display = "none"
 </py-script>
