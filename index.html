@@ -157,6 +157,10 @@
 
         #loading { color: var(--secondary-text); text-align: center; margin-top: 20px;}
     </style>
+    <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1e1e1e">
+<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3063/3063822.png">
+    
 </head>
 <body>
 
@@ -382,7 +386,16 @@
 
     document.getElementById("loading").style.display = "none"
 </py-script>
-
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.log('SW registration failed: ', err));
+        });
+    }
+</script>
+                
 </body>
-            </html>
+</html>
                 
