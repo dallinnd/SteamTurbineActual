@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Turbine Calc | Lite</title>
+    <title>Thermo Calc | Unified</title>
     
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css" />
     <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
@@ -14,7 +14,9 @@
         :root {
             --bg-color: #121212;
             --card-color: #1e1e1e;
-            --accent-color: #03dac6; /* Teal for "Lite" feel */
+            --turbine-color: #4CAF50; /* Green */
+            --compressor-color: #FF9800; /* Orange */
+            --active-color: var(--turbine-color); /* Default */
             --text-color: #e0e0e0;
             --secondary-text: #a0a0a0;
             --input-bg: #2c2c2c;
@@ -30,17 +32,38 @@
             justify-content: center;
         }
 
-        .container {
-            max-width: 500px;
-            width: 100%;
+        .container { max-width: 500px; width: 100%; }
+
+        /* TOGGLE SWITCH STYLES */
+        .toggle-container {
+            background-color: var(--card-color);
+            padding: 4px;
+            border-radius: 8px;
+            display: flex;
+            margin-bottom: 1.5rem;
+            position: relative;
         }
 
-        header {
-            margin-bottom: 2rem;
-            border-bottom: 1px solid #333;
-            padding-bottom: 1rem;
+        .toggle-btn {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            color: var(--secondary-text);
+            user-select: none;
         }
 
+        .toggle-btn.active {
+            background-color: var(--input-bg);
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* HEADER & UI */
+        header { margin-bottom: 1.5rem; border-bottom: 1px solid #333; padding-bottom: 1rem; }
         h1 { font-weight: 600; font-size: 1.5rem; margin: 0; }
         .subtitle { color: var(--secondary-text); font-size: 0.9rem; }
 
@@ -62,63 +85,56 @@
         }
 
         .input-group { margin-bottom: 1rem; }
-        
-        label {
-            display: block;
-            margin-bottom: 0.4rem;
-            font-size: 0.9rem;
-        }
+        label { display: block; margin-bottom: 0.4rem; font-size: 0.9rem; }
 
-        input, select {
-            width: 100%;
-            padding: 10px;
+        input {
+            width: 100%; padding: 10px;
             background-color: var(--input-bg);
             border: 1px solid #333;
             border-radius: 6px;
             color: white;
             font-family: inherit;
-            box-sizing: border-box; 
+            box-sizing: border-box;
         }
-
-        input:focus { outline: 2px solid var(--accent-color); border-color: transparent; }
+        input:focus { outline: 2px solid var(--active-color); border-color: transparent; }
 
         .row { display: flex; gap: 1rem; }
         .col { flex: 1; }
 
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--accent-color);
-            color: #121212;
+        #calc-btn {
+            width: 100%; padding: 12px;
+            background-color: var(--active-color);
+            color: white;
             border: none;
             border-radius: 6px;
             font-weight: 600;
             cursor: pointer;
-            transition: opacity 0.2s;
+            transition: background-color 0.3s;
         }
-
-        button:hover { opacity: 0.9; }
+        #calc-btn:hover { opacity: 0.9; }
 
         .result-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #333;
-            font-size: 0.95rem;
+            display: flex; justify-content: space-between;
+            padding: 8px 0; border-bottom: 1px solid #333; font-size: 0.95rem;
         }
-        
         .result-row:last-child { border-bottom: none; }
-        .result-val { font-family: monospace; color: var(--accent-color); }
+        .result-val { font-family: monospace; color: var(--active-color); }
 
-        #loading { color: var(--accent-color); text-align: center; margin-top: 20px;}
+        #loading { color: var(--secondary-text); text-align: center; margin-top: 20px;}
     </style>
 </head>
 <body>
 
 <div class="container">
+    
+    <div class="toggle-container">
+        <div class="toggle-btn active" id="btn-turbine" onclick="setMode('turbine')">Turbine</div>
+        <div class="toggle-btn" id="btn-compressor" onclick="setMode('compressor')">Compressor</div>
+    </div>
+
     <header>
-        <h1>Turbine Calc (Lite)</h1>
-        <div class="subtitle">Powered by pyXSteam</div>
+        <h1 id="app-title">Turbine Calculator</h1>
+        <div class="subtitle" id="app-subtitle">Isentropic Expansion Solver</div>
     </header>
 
     <div class="card">
@@ -161,17 +177,17 @@
         </div>
     </div>
 
-    <button id="calc-btn" py-click="calculate_turbine">Calculate</button>
+    <button id="calc-btn" py-click="calculate_system">Calculate</button>
 
     <div id="results-area" class="card" style="margin-top: 1.5rem; display: none;">
         <span class="section-title">Results</span>
         
         <div class="result-row">
-            <span>Ideal Power (Isentropic)</span>
+            <span id="label_power_ideal">Ideal Power</span>
             <span class="result-val" id="res_power_ideal">-- kW</span>
         </div>
         <div class="result-row">
-            <span>Actual Power Output</span>
+            <span id="label_power_actual">Actual Power</span>
             <span class="result-val" id="res_power_actual">-- kW</span>
         </div>
         <div class="result-row">
@@ -192,8 +208,49 @@
         </div>
     </div>
     
-    <div id="loading">Initializing Python...</div>
+    <div id="loading">Initializing Python Engine...</div>
 </div>
+
+<script>
+    let currentMode = 'turbine';
+
+    function setMode(mode) {
+        currentMode = mode;
+        const root = document.documentElement;
+        
+        // Update Buttons
+        document.getElementById('btn-turbine').classList.toggle('active', mode === 'turbine');
+        document.getElementById('btn-compressor').classList.toggle('active', mode === 'compressor');
+
+        // Update Text & Colors
+        if (mode === 'turbine') {
+            root.style.setProperty('--active-color', 'var(--turbine-color)');
+            document.getElementById('app-title').innerText = "Turbine Calculator";
+            document.getElementById('app-subtitle').innerText = "Isentropic Expansion Solver";
+            document.getElementById('label_power_ideal').innerText = "Ideal Power Generated";
+            document.getElementById('label_power_actual').innerText = "Actual Power Generated";
+            
+            // Set reasonable defaults for Turbine
+            document.getElementById('P_in').value = "100";
+            document.getElementById('T_in').value = "500";
+            document.getElementById('P_out').value = "0.1";
+        } else {
+            root.style.setProperty('--active-color', 'var(--compressor-color)');
+            document.getElementById('app-title').innerText = "Compressor Calculator";
+            document.getElementById('app-subtitle').innerText = "Isentropic Compression Solver";
+            document.getElementById('label_power_ideal').innerText = "Ideal Power Required";
+            document.getElementById('label_power_actual').innerText = "Actual Power Required";
+
+            // Set reasonable defaults for Compressor
+            document.getElementById('P_in').value = "1";
+            document.getElementById('T_in').value = "25";
+            document.getElementById('P_out').value = "10";
+        }
+        
+        // Hide results until recalculated
+        document.getElementById('results-area').style.display = 'none';
+    }
+</script>
 
 <py-config>
     packages = ["pyXSteam"]
@@ -201,48 +258,50 @@
 
 <py-script>
     from pyXSteam.XSteam import XSteam
-    from js import document
+    from js import document, currentMode
 
-    # Initialize Table in MKS (Bar, degC, kJ/kg)
     steamTable = XSteam(XSteam.UNIT_SYSTEM_MKS)
 
-    def calculate_turbine(*args):
+    def calculate_system(*args):
         try:
-            # 1. Get Inputs
+            # 1. Get Mode (Passed from JS global var)
+            mode = currentMode # 'turbine' or 'compressor'
+
+            # 2. Get Inputs
             P_in = float(document.getElementById("P_in").value)
             T_in = float(document.getElementById("T_in").value)
             P_out = float(document.getElementById("P_out").value)
             m_dot = float(document.getElementById("m_dot").value)
             eta = float(document.getElementById("efficiency").value)
 
-            # 2. Inlet State (State 1)
-            # h_pt = Enthalpy as function of Pressure (bar) and Temp (C)
+            # 3. Inlet State (State 1)
             h1 = steamTable.h_pt(P_in, T_in)
             s1 = steamTable.s_pt(P_in, T_in)
 
-            # 3. Ideal Expansion (State 2s)
-            # Isentropic: s2s = s1
-            # h_ps = Enthalpy as function of Pressure and Entropy
+            # 4. Ideal State (State 2s) - Isentropic (s2s = s1)
             h2s = steamTable.h_ps(P_out, s1)
             
-            # Ideal Work
-            w_ideal = h1 - h2s # kJ/kg
+            # 5. Logic Branch
+            if mode == 'turbine':
+                # Turbine: Produces work, Enthalpy drops
+                w_ideal = h1 - h2s        # Positive value
+                w_actual = w_ideal * eta  # Less work produced due to inefficiency
+                h2a = h1 - w_actual       # Final H is higher than ideal (hotter exhaust)
+            else:
+                # Compressor: Consumes work, Enthalpy rises
+                w_ideal = h2s - h1        # Positive value
+                w_actual = w_ideal / eta  # More work required due to inefficiency
+                h2a = h1 + w_actual       # Final H is higher than ideal (hotter discharge)
 
-            # 4. Actual Expansion (State 2a)
-            w_actual = w_ideal * eta
-            h2a = h1 - w_actual
-
-            # Define State 2a by Outlet Pressure and Actual Enthalpy
+            # 6. Resolve Final State (State 2a)
             t2a = steamTable.t_ph(P_out, h2a)
             s2a = steamTable.s_ph(P_out, h2a)
-            x2a = steamTable.x_ph(P_out, h2a) 
-            
-            # Format Quality
-            if x2a == 0.0 and t2a < steamTable.tsat_p(P_out): 
-                 # Check for compressed liquid (pyXSteam might return 0 for x)
+            x2a = steamTable.x_ph(P_out, h2a)
+
+            # Quality Formatting
+            if x2a == 0.0 and t2a < steamTable.tsat_p(P_out):
                  x_str = "Liquid"
             elif x2a >= 1.0 or x2a < 0:
-                 # Check for superheated (pyXSteam might return -1 or 1)
                  x_str = "Superheated"
             else:
                  x_str = f"{x2a:.3f}"
@@ -251,7 +310,7 @@
             power_ideal = w_ideal * m_dot
             power_actual = w_actual * m_dot
 
-            # 6. Update UI
+            # 7. Update UI
             document.getElementById("res_power_ideal").innerText = f"{power_ideal:.2f} kW"
             document.getElementById("res_power_actual").innerText = f"{power_actual:.2f} kW"
             document.getElementById("res_h2a").innerText = f"{h2a:.2f} kJ/kg"
@@ -263,9 +322,8 @@
 
         except Exception as e:
             print(f"Error: {e}")
-            document.getElementById("res_power_actual").innerText = "Error"
+            document.getElementById("res_power_actual").innerText = "Check Inputs"
 
-    # Hide loading message when ready
     document.getElementById("loading").style.display = "none"
 </py-script>
 
