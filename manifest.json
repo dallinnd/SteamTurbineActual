@@ -7,12 +7,12 @@
   "theme_color": "#1e1e1e",
   "icons": [
     {
-      "src": "/turbine.png",
+      "src": "./turbine.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/turbine.png",
+      "src": "./turbine.png",
       "sizes": "512x512",
       "type": "image/png"
     }
