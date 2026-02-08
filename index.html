@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Turbine Calc | Steam</title>
+    <title>Turbine Calc | Lite</title>
     
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css" />
     <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
@@ -14,7 +14,7 @@
         :root {
             --bg-color: #121212;
             --card-color: #1e1e1e;
-            --accent-color: #4CAF50; /* Engineering Green */
+            --accent-color: #03dac6; /* Teal for "Lite" feel */
             --text-color: #e0e0e0;
             --secondary-text: #a0a0a0;
             --input-bg: #2c2c2c;
@@ -77,7 +77,7 @@
             border-radius: 6px;
             color: white;
             font-family: inherit;
-            box-sizing: border-box; /* Fix padding width issue */
+            box-sizing: border-box; 
         }
 
         input:focus { outline: 2px solid var(--accent-color); border-color: transparent; }
@@ -89,7 +89,7 @@
             width: 100%;
             padding: 12px;
             background-color: var(--accent-color);
-            color: white;
+            color: #121212;
             border: none;
             border-radius: 6px;
             font-weight: 600;
@@ -110,7 +110,6 @@
         .result-row:last-child { border-bottom: none; }
         .result-val { font-family: monospace; color: var(--accent-color); }
 
-        /* Loading Spinner for PyScript */
         #loading { color: var(--accent-color); text-align: center; margin-top: 20px;}
     </style>
 </head>
@@ -118,8 +117,8 @@
 
 <div class="container">
     <header>
-        <h1>Turbine Calculator</h1>
-        <div class="subtitle">Isentropic & Actual Expansion Solver</div>
+        <h1>Turbine Calc (Lite)</h1>
+        <div class="subtitle">Powered by pyXSteam</div>
     </header>
 
     <div class="card">
@@ -146,12 +145,6 @@
 
     <div class="card">
         <span class="section-title">Outlet Constraint (State 2)</span>
-        <div class="input-group">
-            <label>Solve based on:</label>
-            <select id="mode_selector">
-                <option value="P">Outlet Pressure (Most Common)</option>
-                </select>
-        </div>
         <div class="row">
             <div class="col">
                 <div class="input-group">
@@ -199,41 +192,38 @@
         </div>
     </div>
     
-    <div id="loading">Loading Steam Tables...</div>
+    <div id="loading">Initializing Python...</div>
 </div>
 
 <py-config>
-    packages = ["iapws"]
+    packages = ["pyXSteam"]
 </py-config>
 
 <py-script>
-    from iapws import IAPWS97
+    from pyXSteam.XSteam import XSteam
     from js import document
 
+    # Initialize Table in MKS (Bar, degC, kJ/kg)
+    steamTable = XSteam(XSteam.UNIT_SYSTEM_MKS)
+
     def calculate_turbine(*args):
-        # 1. Get Inputs
         try:
-            P_in_bar = float(document.getElementById("P_in").value)
-            T_in_C = float(document.getElementById("T_in").value)
-            P_out_bar = float(document.getElementById("P_out").value)
+            # 1. Get Inputs
+            P_in = float(document.getElementById("P_in").value)
+            T_in = float(document.getElementById("T_in").value)
+            P_out = float(document.getElementById("P_out").value)
             m_dot = float(document.getElementById("m_dot").value)
             eta = float(document.getElementById("efficiency").value)
 
-            # Convert to MPa and Kelvin for IAPWS
-            P_in = P_in_bar / 10.0
-            P_out = P_out_bar / 10.0
-            T_in = T_in_C + 273.15
-
             # 2. Inlet State (State 1)
-            # Define by Pressure and Temperature
-            st1 = IAPWS97(P=P_in, T=T_in)
-            h1 = st1.h
-            s1 = st1.s
+            # h_pt = Enthalpy as function of Pressure (bar) and Temp (C)
+            h1 = steamTable.h_pt(P_in, T_in)
+            s1 = steamTable.s_pt(P_in, T_in)
 
             # 3. Ideal Expansion (State 2s)
-            # Define by Outlet Pressure and s2s = s1
-            st2s = IAPWS97(P=P_out, s=s1)
-            h2s = st2s.h
+            # Isentropic: s2s = s1
+            # h_ps = Enthalpy as function of Pressure and Entropy
+            h2s = steamTable.h_ps(P_out, s1)
             
             # Ideal Work
             w_ideal = h1 - h2s # kJ/kg
@@ -243,17 +233,19 @@
             h2a = h1 - w_actual
 
             # Define State 2a by Outlet Pressure and Actual Enthalpy
-            st2a = IAPWS97(P=P_out, h=h2a)
+            t2a = steamTable.t_ph(P_out, h2a)
+            s2a = steamTable.s_ph(P_out, h2a)
+            x2a = steamTable.x_ph(P_out, h2a) 
             
-            # 5. Extract Results
-            t2a = st2a.T - 273.15
-            s2a = st2a.s
-            x2a = st2a.x # Quality (0-1), returns None if superheated
-            
-            if x2a is None:
-                x_str = "Superheated"
+            # Format Quality
+            if x2a == 0.0 and t2a < steamTable.tsat_p(P_out): 
+                 # Check for compressed liquid (pyXSteam might return 0 for x)
+                 x_str = "Liquid"
+            elif x2a >= 1.0 or x2a < 0:
+                 # Check for superheated (pyXSteam might return -1 or 1)
+                 x_str = "Superheated"
             else:
-                x_str = f"{x2a:.3f}"
+                 x_str = f"{x2a:.3f}"
 
             delta_s = s2a - s1
             power_ideal = w_ideal * m_dot
@@ -279,3 +271,4 @@
 
 </body>
 </html>
+                
