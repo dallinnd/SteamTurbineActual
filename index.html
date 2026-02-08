@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thermo Calc | Unified</title>
+    <title>Thermo Calc | Final</title>
     
     <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css" />
     <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
@@ -113,12 +113,47 @@
         }
         #calc-btn:hover { opacity: 0.9; }
 
-        .result-row {
-            display: flex; justify-content: space-between;
-            padding: 8px 0; border-bottom: 1px solid #333; font-size: 0.95rem;
+        /* NEW RESULT STYLES */
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
         }
-        .result-row:last-child { border-bottom: none; }
-        .result-val { font-family: monospace; color: var(--active-color); }
+
+        .result-item {
+            margin-bottom: 0.5rem;
+        }
+
+        .result-label {
+            font-size: 0.85rem;
+            color: var(--secondary-text);
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .result-box {
+            background-color: var(--active-color);
+            color: #121212; /* Dark text for contrast against bright accent */
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-weight: 600;
+            text-align: center;
+            transition: background-color 0.3s;
+        }
+
+        .result-box.subtle {
+            background-color: #333;
+            color: var(--secondary-text);
+            font-weight: 400;
+        }
+
+        .divider {
+            height: 1px;
+            background-color: #333;
+            margin: 1.5rem 0;
+        }
 
         #loading { color: var(--secondary-text); text-align: center; margin-top: 20px;}
     </style>
@@ -180,50 +215,68 @@
     <button id="calc-btn" py-click="calculate_system">Calculate</button>
 
     <div id="results-area" class="card" style="margin-top: 1.5rem; display: none;">
-        <span class="section-title">Results</span>
+        <span class="section-title">Key Performance</span>
         
-        <div class="result-row">
-            <span id="label_power_ideal">Ideal Power</span>
-            <span class="result-val" id="res_power_ideal">-- kW</span>
+        <div class="result-grid">
+            <div class="result-item">
+                <span class="result-label" id="label_power_ideal">Ideal Power</span>
+                <div class="result-box" id="res_power_ideal">-- kW</div>
+            </div>
+            <div class="result-item">
+                <span class="result-label" id="label_power_actual">Actual Power</span>
+                <div class="result-box" id="res_power_actual">-- kW</div>
+            </div>
         </div>
-        <div class="result-row">
-            <span id="label_power_actual">Actual Power</span>
-            <span class="result-val" id="res_power_actual">-- kW</span>
+
+        <span class="section-title" style="margin-top: 1rem;">Actual Outlet State (2a)</span>
+        <div class="result-grid">
+            <div class="result-item">
+                <span class="result-label">Temperature (Actual)</span>
+                <div class="result-box" id="res_t2a">-- °C</div>
+            </div>
+            <div class="result-item">
+                <span class="result-label">Enthalpy (Actual)</span>
+                <div class="result-box" id="res_h2a">-- kJ/kg</div>
+            </div>
+            <div class="result-item">
+                <span class="result-label">Quality (x)</span>
+                <div class="result-box" id="res_x2a">--</div>
+            </div>
+            <div class="result-item">
+                <span class="result-label">Entropy Change (ΔS)</span>
+                <div class="result-box" id="res_ds">-- kJ/kgK</div>
+            </div>
         </div>
-        <div class="result-row">
-            <span>Actual Outlet Enthalpy</span>
-            <span class="result-val" id="res_h2a">-- kJ/kg</span>
+
+        <div class="divider"></div>
+
+        <span class="section-title">Ideal Reference (Isentropic State 2s)</span>
+        <div class="result-grid">
+            <div class="result-item">
+                <span class="result-label">Ideal Temp (T2s)</span>
+                <div class="result-box subtle" id="res_t2s">-- °C</div>
+            </div>
+            <div class="result-item">
+                <span class="result-label">Ideal Enthalpy (h2s)</span>
+                <div class="result-box subtle" id="res_h2s">-- kJ/kg</div>
+            </div>
         </div>
-        <div class="result-row">
-            <span>Actual Outlet Temp</span>
-            <span class="result-val" id="res_t2a">-- °C</span>
-        </div>
-        <div class="result-row">
-            <span>Actual Outlet Quality (x)</span>
-            <span class="result-val" id="res_x2a">--</span>
-        </div>
-        <div class="result-row">
-            <span>Actual Entropy Change (ΔS)</span>
-            <span class="result-val" id="res_ds">-- kJ/kgK</span>
-        </div>
+
     </div>
     
     <div id="loading">Initializing Python Engine...</div>
 </div>
 
 <script>
-    // FIX 1: Use 'var' so it attaches to 'window' and Python can see it
     var currentMode = 'turbine'; 
 
     function setMode(mode) {
         currentMode = mode;
         const root = document.documentElement;
         
-        // Update Buttons
         document.getElementById('btn-turbine').classList.toggle('active', mode === 'turbine');
         document.getElementById('btn-compressor').classList.toggle('active', mode === 'compressor');
 
-        // Update Text & Colors
         if (mode === 'turbine') {
             root.style.setProperty('--active-color', 'var(--turbine-color)');
             document.getElementById('app-title').innerText = "Turbine Calculator";
@@ -231,7 +284,7 @@
             document.getElementById('label_power_ideal').innerText = "Ideal Power Generated";
             document.getElementById('label_power_actual').innerText = "Actual Power Generated";
             
-            // Set reasonable defaults for Turbine
+            // Defaults
             document.getElementById('P_in').value = "100";
             document.getElementById('T_in').value = "500";
             document.getElementById('P_out').value = "0.1";
@@ -242,13 +295,11 @@
             document.getElementById('label_power_ideal').innerText = "Ideal Power Required";
             document.getElementById('label_power_actual').innerText = "Actual Power Required";
 
-            // Set reasonable defaults for Compressor
+            // Defaults
             document.getElementById('P_in').value = "1";
             document.getElementById('T_in').value = "25";
             document.getElementById('P_out').value = "10";
         }
-        
-        // Hide results until recalculated
         document.getElementById('results-area').style.display = 'none';
     }
 </script>
@@ -260,42 +311,40 @@
 <py-script>
     from pyXSteam.XSteam import XSteam
     from js import document
-    import js  # FIX 2: Import the whole js module, don't import variables directly
+    import js 
 
     steamTable = XSteam(XSteam.UNIT_SYSTEM_MKS)
 
     def calculate_system(*args):
         try:
-            # FIX 3: Access currentMode from the js module directly
             mode = js.currentMode 
 
-            # 2. Get Inputs
+            # Inputs
             P_in = float(document.getElementById("P_in").value)
             T_in = float(document.getElementById("T_in").value)
             P_out = float(document.getElementById("P_out").value)
             m_dot = float(document.getElementById("m_dot").value)
             eta = float(document.getElementById("efficiency").value)
 
-            # 3. Inlet State (State 1)
+            # State 1
             h1 = steamTable.h_pt(P_in, T_in)
             s1 = steamTable.s_pt(P_in, T_in)
 
-            # 4. Ideal State (State 2s) - Isentropic (s2s = s1)
+            # State 2s (Ideal)
             h2s = steamTable.h_ps(P_out, s1)
+            t2s = steamTable.t_ps(P_out, s1) # Calculate Ideal Temp
             
-            # 5. Logic Branch
+            # Logic Branch
             if mode == 'turbine':
-                # Turbine: Produces work, Enthalpy drops
-                w_ideal = h1 - h2s        # Positive value
-                w_actual = w_ideal * eta  # Less work produced due to inefficiency
-                h2a = h1 - w_actual       # Final H is higher than ideal (hotter exhaust)
+                w_ideal = h1 - h2s
+                w_actual = w_ideal * eta
+                h2a = h1 - w_actual
             else:
-                # Compressor: Consumes work, Enthalpy rises
-                w_ideal = h2s - h1        # Positive value
-                w_actual = w_ideal / eta  # More work required due to inefficiency
-                h2a = h1 + w_actual       # Final H is higher than ideal (hotter discharge)
+                w_ideal = h2s - h1
+                w_actual = w_ideal / eta
+                h2a = h1 + w_actual
 
-            # 6. Resolve Final State (State 2a)
+            # State 2a (Actual)
             t2a = steamTable.t_ph(P_out, h2a)
             s2a = steamTable.s_ph(P_out, h2a)
             x2a = steamTable.x_ph(P_out, h2a)
@@ -312,23 +361,28 @@
             power_ideal = w_ideal * m_dot
             power_actual = w_actual * m_dot
 
-            # 7. Update UI
+            # UI Update
             document.getElementById("res_power_ideal").innerText = f"{power_ideal:.2f} kW"
             document.getElementById("res_power_actual").innerText = f"{power_actual:.2f} kW"
+            
             document.getElementById("res_h2a").innerText = f"{h2a:.2f} kJ/kg"
             document.getElementById("res_t2a").innerText = f"{t2a:.2f} °C"
             document.getElementById("res_x2a").innerText = x_str
             document.getElementById("res_ds").innerText = f"{delta_s:.4f} kJ/kgK"
 
+            # New Ideal Reference Section
+            document.getElementById("res_h2s").innerText = f"{h2s:.2f} kJ/kg"
+            document.getElementById("res_t2s").innerText = f"{t2s:.2f} °C"
+
             document.getElementById("results-area").style.display = "block"
 
         except Exception as e:
             print(f"Error: {e}")
-            document.getElementById("res_power_actual").innerText = f"Error: {e}"
+            document.getElementById("res_power_actual").innerText = "Error"
 
     document.getElementById("loading").style.display = "none"
 </py-script>
 
 </body>
-</html>
+            </html>
                 
