@@ -362,17 +362,17 @@
             power_actual = w_actual * m_dot
 
             # UI Update
-            document.getElementById("res_power_ideal").innerText = f"{power_ideal:.2f} kW"
-            document.getElementById("res_power_actual").innerText = f"{power_actual:.2f} kW"
+            document.getElementById("res_power_ideal").innerText = f"{power_ideal:.4f} kW"
+            document.getElementById("res_power_actual").innerText = f"{power_actual:.4f} kW"
             
-            document.getElementById("res_h2a").innerText = f"{h2a:.2f} kJ/kg"
-            document.getElementById("res_t2a").innerText = f"{t2a:.2f} °C"
+            document.getElementById("res_h2a").innerText = f"{h2a:.4f} kJ/kg"
+            document.getElementById("res_t2a").innerText = f"{t2a:.4f} °C"
             document.getElementById("res_x2a").innerText = x_str
             document.getElementById("res_ds").innerText = f"{delta_s:.4f} kJ/kgK"
 
             # New Ideal Reference Section
-            document.getElementById("res_h2s").innerText = f"{h2s:.2f} kJ/kg"
-            document.getElementById("res_t2s").innerText = f"{t2s:.2f} °C"
+            document.getElementById("res_h2s").innerText = f"{h2s:.4f} kJ/kg"
+            document.getElementById("res_t2s").innerText = f"{t2s:.4f} °C"
 
             document.getElementById("results-area").style.display = "block"
 
