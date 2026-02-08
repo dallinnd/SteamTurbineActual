@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steam Properties PWA</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css" />
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+
+    <style>
+    /* 1. Global Box Sizing Fix: Prevents padding from breaking layouts */
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+
+    :root {
+        --primary: #2563eb;
+        --success: #16a34a;
+        --secondary: #64748b;
+        --bg: #f8fafc;
+        --card-bg: #ffffff;
+        --text: #1e293b;
+        --border: #e2e8f0;
+    }
+
+    body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background-color: var(--bg);
+        color: var(--text);
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        min-height: 100vh; /* Ensures full height on mobile */
+    }
+
+    .container {
+        width: 100%;
+        max-width: 500px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding-bottom: 50px;
+    }
+
+    .card {
+        background: var(--card-bg);
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border: 1px solid var(--border);
+        overflow: hidden; /* Extra safety against overflow */
+    }
+
+    h1 { margin: 0 0 10px 0; font-size: 1.5rem; text-align: center; }
+    h2 { margin: 0 0 15px 0; font-size: 1.1rem; border-bottom: 2px solid var(--bg); padding-bottom: 8px; color: var(--primary); }
+
+    /* Form Elements */
+    .input-group { margin-bottom: 15px; }
+    
+    label { 
+        display: block; 
+        font-size: 0.9rem; 
+        font-weight: 600; 
+        margin-bottom: 5px; 
+    }
+    
+    .row { 
+        display: flex; 
+        gap: 10px; 
+        width: 100%; /* Ensure row takes full container width */
+    }
+
+    input, select { 
+        padding: 10px; 
+        border: 1px solid var(--border); 
+        border-radius: 8px; 
+        font-size: 1rem; 
+        background: #fff;
+        height: 44px; /* Fixes alignment issues between input/select */
+    }
+    
+    input { 
+        flex: 2; 
+        min-width: 0; /* Critical for flex items to shrink properly */
+    }
+    
+    select { 
+        flex: 1; 
+        min-width: 80px; /* Prevents unit dropdown from getting too squished */
+    }
+
+    /* Buttons */
+    button {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: opacity 0.2s;
+    }
+    button:active { opacity: 0.8; }
+    .btn-calc { background-color: var(--success); color: white; }
+    
+    /* Toggles */
+    .toggle-container {
+        display: flex;
+        background: var(--bg);
+        padding: 4px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+    .toggle-btn {
+        flex: 1;
+        padding: 8px;
+        text-align: center;
+        cursor: pointer;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--secondary);
+        border: 1px solid transparent;
+        transition: background 0.2s;
+    }
+    .toggle-btn.active {
+        background: white;
+        color: var(--primary);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-color: var(--border);
+        }
+
+        /* Results */
+        .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .result-item { background: var(--bg); padding: 10px; border-radius: 8px; text-align: center; }
+        .result-label { font-size: 0.8rem; color: var(--secondary); margin-bottom: 4px; }
+        .result-value { font-size: 1.1rem; font-weight: bold; color: var(--text); word-break: break-all; }
+        .unit { font-size: 0.8rem; color: var(--secondary); }
+    
+        .error-msg { color: #ef4444; text-align: center; font-weight: bold; min-height: 1.5em; font-size: 0.9rem; margin-top: 10px;    }
+
+        /* Flow specific */
+        .flow-results { margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border); }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <div class="card">
+            <h1>Steam Calculator</h1>
+            
+            <div class="input-group">
+                <label>Temperature</label>
+                <div class="row">
+                    <input type="number" id="temp_input" placeholder="Value">
+                    <select id="temp_unit">
+                        <option value="C">°C</option>
+                        <option value="F">°F</option>
+                        <option value="K">K</option>
+                        <option value="R">°R</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Pressure</label>
+                <div class="row">
+                    <input type="number" id="press_input" placeholder="Value">
+                    <select id="press_unit">
+                        <option value="bar">bar</option>
+                        <option value="psi">psi</option>
+                        <option value="kPa">kPa</option>
+                        <option value="MPa">MPa</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn-calc" py-click="calculate_properties">Calculate Properties</button>
+            <div id="error-props" class="error-msg"></div>
+        </div>
+
+        <div class="card">
+            <h2>State Results</h2>
+            <div class="result-grid">
+                <div class="result-item">
+                    <div class="result-label">Enthalpy (h)</div>
+                    <div class="result-value"><span id="res_h">-</span></div>
+                    <div class="unit">kJ/kg</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Spec. Volume (v)</div>
+                    <div class="result-value"><span id="res_v">-</span></div>
+                    <div class="unit">m³/kg</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Int. Energy (u)</div>
+                    <div class="result-value"><span id="res_u">-</span></div>
+                    <div class="unit">kJ/kg</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Entropy (s)</div>
+                    <div class="result-value"><span id="res_s">-</span></div>
+                    <div class="unit">kJ/(kg·K)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Flow Dynamics</h2>
+            
+            <div class="toggle-container">
+                <div id="mode-vel" class="toggle-btn active" onclick="setFlowMode('vel')">Solve for Velocity</div>
+                <div id="mode-area" class="toggle-btn" onclick="setFlowMode('area')">Solve for Area</div>
+            </div>
+
+            <div class="input-group">
+                <label>Mass Flow Rate (ṁ)</label>
+                <div class="row">
+                    <input type="number" id="mdot_input" placeholder="Rate">
+                    <select id="mdot_unit">
+                        <option value="kgs">kg/s</option>
+                        <option value="lbs">lb/s</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="input-block-area" class="input-group">
+                <label>Cross Sec. Area (Ac)</label>
+                <div class="row">
+                    <input type="number" id="area_input" placeholder="Area">
+                    <select id="area_unit_in">
+                        <option value="m2">m²</option>
+                        <option value="ft2">ft²</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="input-block-vel" class="input-group hidden">
+                <label>Velocity (u)</label>
+                <div class="row">
+                    <input type="number" id="vel_input" placeholder="Velocity">
+                    <select id="vel_unit_in">
+                        <option value="ms">m/s</option>
+                        <option value="fts">ft/s</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn-calc" py-click="calculate_flow">Calculate Flow</button>
+            <div id="error-flow" class="error-msg"></div>
+
+            <div class="flow-results result-grid">
+                <div class="result-item">
+                    <div class="result-label" id="res_label_1">Metric Result</div>
+                    <div class="result-value"><span id="flow_res_metric">-</span></div>
+                    <div class="unit" id="flow_unit_metric"></div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label" id="res_label_2">Imperial Result</div>
+                    <div class="result-value"><span id="flow_res_imp">-</span></div>
+                    <div class="unit" id="flow_unit_imp"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let currentFlowMode = 'vel'; // 'vel' means calculate velocity
+
+        function setFlowMode(mode) {
+            currentFlowMode = mode;
+            // Update Toggle Visuals
+            document.getElementById('mode-vel').className = mode === 'vel' ? 'toggle-btn active' : 'toggle-btn';
+            document.getElementById('mode-area').className = mode === 'area' ? 'toggle-btn active' : 'toggle-btn';
+            
+            // Show/Hide Inputs
+            if(mode === 'vel') {
+                document.getElementById('input-block-area').classList.remove('hidden');
+                document.getElementById('input-block-vel').classList.add('hidden');
+            } else {
+                document.getElementById('input-block-area').classList.add('hidden');
+                document.getElementById('input-block-vel').classList.remove('hidden');
+            }
+        }
+    </script>
+
+    <py-config>
+        packages = ["pyXSteam"]
+    </py-config>
+    
+        <script type="py">
+        from pyXSteam.XSteam import XSteam
+        from pyscript import document, window
+
+        # Initialize Steam Table
+        # UNIT_SYSTEM_BARE uses:
+        # Pressure: MPa
+        # Temperature: Kelvin
+        # Energy/Enthalpy: kJ/kg (This was the catch!)
+        # Specific Volume: m³/kg
+        steamTable = XSteam(XSteam.UNIT_SYSTEM_BARE)
+
+        # Global variable to store specific volume (v)
+        state_v = None 
+
+        # --- Helper: Converters ---
+        def to_kelvin(val, unit):
+            if unit == 'C': return val + 273.15
+            if unit == 'F': return (val - 32) * (5/9) + 273.15
+            if unit == 'R': return val * (5/9)
+            return val
+
+        def to_mpa(val, unit):
+            if unit == 'kPa': return val / 1000.0
+            if unit == 'bar': return val * 0.1
+            if unit == 'psi': return val * 0.00689476
+            return val
+
+        def mdot_to_kgs(val, unit):
+            if unit == 'lbs': return val * 0.453592
+            return val
+
+        def area_to_m2(val, unit):
+            if unit == 'ft2': return val * 0.092903
+            return val
+
+        def vel_to_ms(val, unit):
+            if unit == 'fts': return val * 0.3048
+            return val
+
+        # --- Main Calculation 1: Properties ---
+        def calculate_properties(event):
+            global state_v
+            try:
+                document.getElementById("error-props").innerText = ""
+
+                # Inputs
+                t_in = float(document.getElementById("temp_input").value)
+                p_in = float(document.getElementById("press_input").value)
+                t_unit = document.getElementById("temp_unit").value
+                p_unit = document.getElementById("press_unit").value
+
+                # Convert Inputs to Library Standard (K and MPa)
+                t_k = to_kelvin(t_in, t_unit)
+                p_mpa = to_mpa(p_in, p_unit)
+
+                # PyXSteam Calculations
+                # FIX: Removed "/ 1000.0". 
+                # The library returns h, u, s in kJ/kg and kJ/(kg·K) natively.
+                h = steamTable.h_pt(p_mpa, t_k) 
+                v = steamTable.v_pt(p_mpa, t_k)
+                u = steamTable.u_pt(p_mpa, t_k)
+                s = steamTable.s_pt(p_mpa, t_k)
+
+                # Store v globally for Flow calc (v is m³/kg)
+                state_v = v
+
+                # Display Results
+                document.getElementById("res_h").innerText = f"{h:.4f}"
+                document.getElementById("res_v").innerText = f"{v:.6f}"
+                document.getElementById("res_u").innerText = f"{u:.4f}"
+                document.getElementById("res_s").innerText = f"{s:.4f}"
+
+            except Exception as e:
+                document.getElementById("error-props").innerText = "Check inputs."
+                print(e)
+
+        # --- Main Calculation 2: Flow ---
+        def calculate_flow(event):
+            global state_v
+            try:
+                document.getElementById("error-flow").innerText = ""
+
+                # 1. Check if specific volume is available
+                if state_v is None:
+                    document.getElementById("error-flow").innerText = "Calc properties above first!"
+                    return
+
+                # 2. Get Mass Flow
+                mdot_in = float(document.getElementById("mdot_input").value)
+                mdot_unit = document.getElementById("mdot_unit").value
+                mdot_kgs = mdot_to_kgs(mdot_in, mdot_unit)
+
+                # 3. Determine Mode (Velocity or Area)
+                mode = window.currentFlowMode 
+                
+                res_metric = 0.0
+                res_imp = 0.0
+                lbl_met = ""
+                lbl_imp = ""
+
+                if mode == 'vel':
+                    # Solving for VELOCITY (u)
+                    area_in = float(document.getElementById("area_input").value)
+                    area_unit = document.getElementById("area_unit_in").value
+                    area_m2 = area_to_m2(area_in, area_unit)
+
+                    # u = (m_dot * v) / Ac
+                    val_ms = (mdot_kgs * state_v) / area_m2
+                    val_fts = val_ms * 3.28084
+
+                    res_metric = val_ms
+                    res_imp = val_fts
+                    lbl_met = "m/s"
+                    lbl_imp = "ft/s"
+                    
+                    document.getElementById("res_label_1").innerText = "Velocity (Metric)"
+                    document.getElementById("res_label_2").innerText = "Velocity (Imperial)"
+
+                else:
+                    # Solving for AREA (Ac)
+                    vel_in = float(document.getElementById("vel_input").value)
+                    vel_unit = document.getElementById("vel_unit_in").value
+                    vel_ms = vel_to_ms(vel_in, vel_unit)
+
+                    # Ac = (m_dot * v) / u
+                    val_m2 = (mdot_kgs * state_v) / vel_ms
+                    val_ft2 = val_m2 * 10.7639
+
+                    res_metric = val_m2
+                    res_imp = val_ft2
+                    lbl_met = "m²"
+                    lbl_imp = "ft²"
+
+                    document.getElementById("res_label_1").innerText = "Area (Metric)"
+                    document.getElementById("res_label_2").innerText = "Area (Imperial)"
+
+                # 4. Display Results
+                document.getElementById("flow_res_metric").innerText = f"{res_metric:.4f}"
+                document.getElementById("flow_unit_metric").innerText = lbl_met
+                
+                document.getElementById("flow_res_imp").innerText = f"{res_imp:.4f}"
+                document.getElementById("flow_unit_imp").innerText = lbl_imp
+
+            except Exception as e:
+                 document.getElementById("error-flow").innerText = "Check flow inputs."
+                 print(e)
+        </script>
+    
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').catch(console.error);
+        }
+    </script>
+</body>
+</html>
